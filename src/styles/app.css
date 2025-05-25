@@ -1,0 +1,31 @@
+.loading-container {
+  min-height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  background: linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%);
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 3px solid rgba(79, 70, 229, 0.1);
+  border-radius: 50%;
+  border-top-color: #4f46e5;
+  animation: spin 1s linear infinite;
+}
+
+[data-theme='dark'] .loading-container {
+  background: linear-gradient(135deg, #1a1b1e 0%, #2c2d31 100%);
+}
+
+[data-theme='dark'] .loading-spinner {
+  border-color: rgba(99, 102, 241, 0.1);
+  border-top-color: #6366f1;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+} 

@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { FiEdit2 } from "react-icons/fi";
+import { FiEdit2, FiMoon, FiSun, FiMenu, FiX } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
 import { supabase } from "./supabaseClient";
+import { useTheme } from "./context/ThemeContext";
 import Auth from "./Auth";
 import "./styles/calculator.css";
 
@@ -24,8 +25,9 @@ const getISTDateTime = () => {
   return now.toLocaleString('en-IN', options).replace(/,\s*/g, ' ').trim();
 };
 
-export default function CurrencyCalculator() {
-  const [session, setSession] = useState(null);
+export default function CurrencyCalculator({ initialSession }) {
+  const { isDarkMode, toggleTheme } = useTheme();
+  const [session, setSession] = useState(initialSession);
   const [counts, setCounts] = useState(Object.fromEntries(denominations.map(d => [d, { bundle: '', open: '', total: 0 }])));
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,13 +38,9 @@ export default function CurrencyCalculator() {
   const [showHistory, setShowHistory] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [dialog, setDialog] = useState({ show: false, message: '', type: '' });
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
 
   useEffect(() => {
-    // Check for active session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-    });
-
     // Listen for auth changes
     const {
       data: { subscription },
@@ -402,18 +400,42 @@ export default function CurrencyCalculator() {
   const renderHeader = () => (
     <div className="header">
       <div className="app-title">Cash Counter</div>
-      <div className="header-actions">
+      
+      {/* Mobile menu button */}
+      <button 
+        className="menu-toggle"
+        onClick={() => setIsMenuOpen(!isMenuOpen)}
+        aria-label="Toggle menu"
+      >
+        {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
+      </button>
+
+      {/* Header actions container with mobile support */}
+      <div className={`header-actions ${isMenuOpen ? 'show' : ''}`}>
+        <button 
+          className="calculator-theme-toggle"
+          onClick={() => {
+            toggleTheme();
+            setIsMenuOpen(false);
+          }}
+          aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDarkMode ? <FiSun size={20} /> : <FiMoon size={20} />}
+        </button>
         {showHistory ? (
+          
           <button 
             className="history-button"
             onClick={() => {
               setShowHistory(false);
               setCounts(Object.fromEntries(denominations.map(d => [d, { bundle: '', open: '', total: 0 }])));
               setNote("");
+              setIsMenuOpen(false);
             }}
           >
             New
           </button>
+
         ) : (
           <button 
             className="history-button"
@@ -422,6 +444,7 @@ export default function CurrencyCalculator() {
               setEditingEntryId(null);
               setCounts(Object.fromEntries(denominations.map(d => [d, { bundle: '', open: '', total: 0 }])));
               setNote("");
+              setIsMenuOpen(false);
             }}
           >
             History
@@ -429,7 +452,10 @@ export default function CurrencyCalculator() {
         )}
         <button 
           className="sign-out-button"
-          onClick={handleSignOut}
+          onClick={() => {
+            handleSignOut();
+            setIsMenuOpen(false);
+          }}
         >
           Sign Out
         </button>

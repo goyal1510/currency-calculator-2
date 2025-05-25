@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { supabase } from './supabaseClient';
+import { useTheme } from './context/ThemeContext';
+import { FiMoon, FiSun } from 'react-icons/fi';
 import './styles/auth.css';
 
 export default function Auth() {
@@ -8,6 +10,7 @@ export default function Auth() {
   const [password, setPassword] = useState('');
   const [isSignUp, setIsSignUp] = useState(false);
   const [error, setError] = useState(null);
+  const { isDarkMode, toggleTheme } = useTheme();
 
   const handleAuth = async (e) => {
     e.preventDefault();
@@ -39,7 +42,18 @@ export default function Auth() {
   return (
     <div className="auth-container">
       <div className="auth-card">
-        <h2>{isSignUp ? 'Sign Up' : 'Sign In'}</h2>
+        <button 
+          className="theme-toggle"
+          onClick={toggleTheme}
+          aria-label={isDarkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+        >
+          {isDarkMode ? <FiSun size={20} /> : <FiMoon size={20} />}
+        </button>
+        <div className="auth-header">
+          <h1>Cash Counter</h1>
+          <p>Your Personal Money Management Tool</p>
+        </div>
+        <h2>{isSignUp ? 'Create Account' : 'Welcome Back'}</h2>
         <form onSubmit={handleAuth} className="auth-form">
           <input
             type="email"
