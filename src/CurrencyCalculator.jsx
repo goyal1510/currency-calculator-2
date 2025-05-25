@@ -1,10 +1,9 @@
 import { useEffect, useState } from "react";
-import { createClient } from "@supabase/supabase-js";
 import { FiEdit2 } from "react-icons/fi";
 import { RiDeleteBin6Line } from "react-icons/ri";
+import { supabase } from "./supabaseClient";
+import Auth from "./Auth";
 import "./styles/calculator.css";
-
-const supabase = createClient(import.meta.env.VITE_SUPABASE_URL, import.meta.env.VITE_SUPABASE_ANON_KEY);
 
 // Flatten the denominations array
 const denominations = [1, 2, 5, 10, 20, 50, 100, 200, 500];
@@ -26,6 +25,7 @@ const getISTDateTime = () => {
 };
 
 export default function CurrencyCalculator() {
+  const [session, setSession] = useState(null);
   const [counts, setCounts] = useState(Object.fromEntries(denominations.map(d => [d, { bundle: '', open: '', total: 0 }])));
   const [note, setNote] = useState("");
   const [loading, setLoading] = useState(false);
@@ -36,6 +36,22 @@ export default function CurrencyCalculator() {
   const [showHistory, setShowHistory] = useState(false);
   const [editingEntryId, setEditingEntryId] = useState(null);
   const [dialog, setDialog] = useState({ show: false, message: '', type: '' });
+
+  useEffect(() => {
+    // Check for active session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+    });
+
+    // Listen for auth changes
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
 
   const total = Object.entries(counts).reduce((sum, [d, count]) => {
     return sum + d * count.total;
@@ -82,8 +98,6 @@ export default function CurrencyCalculator() {
         return;
       }
 
-
-
       const uniqueDates = [...new Set(data
         .filter(d => d.ist_timestamp) // Filter out null/undefined timestamps
         .map(d => d.ist_timestamp.split(' ')[0]) // Get just the date part
@@ -100,7 +114,6 @@ export default function CurrencyCalculator() {
     if (!selectedDate) return;
 
     try {
-
       const { data, error } = await supabase
         .from("calculations_2")
         .select("id, note, created_at, ist_timestamp")
@@ -111,7 +124,6 @@ export default function CurrencyCalculator() {
         console.error("Error fetching entries:", error);
         return;
       }
-
 
       if (!data || data.length === 0) {
         setEntries([]);
@@ -202,23 +214,31 @@ export default function CurrencyCalculator() {
   };
 
   const handleSave = async () => {
+    if (!session?.user) {
+      setDialog({
+        show: true,
+        message: "Please sign in to save your calculations.",
+        type: 'error'
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const istDateTime = getISTDateTime();
 
       if (editingEntryId) {
-        // Update existing entry without changing timestamp
         const { error: calcError } = await supabase
-          .from("calculations")
+          .from("calculations_2")
           .update({ note })
-          .eq('id', editingEntryId);
+          .eq('id', editingEntryId)
+          .eq('user_id', session.user.id);
 
         if (calcError) {
           console.error("Error updating calculation:", calcError);
           return;
         }
 
-        // Delete existing denominations
         const { error: deleteError } = await supabase
           .from("denominations_2")
           .delete()
@@ -229,9 +249,8 @@ export default function CurrencyCalculator() {
           return;
         }
 
-        // Insert new denominations with potential negative values
         const entries = denominations
-          .filter(d => counts[d].total !== 0) // Include both positive and negative totals
+          .filter(d => counts[d].total !== 0)
           .map(d => ({
             calculation_id: editingEntryId,
             denomination: d,
@@ -255,12 +274,12 @@ export default function CurrencyCalculator() {
           type: 'success'
         });
       } else {
-        // Create new entry with current timestamp
         const { data: calcData, error: calcError } = await supabase
           .from("calculations_2")
           .insert([{ 
             note,
-            ist_timestamp: istDateTime
+            ist_timestamp: istDateTime,
+            user_id: session.user.id
           }])
           .select()
           .single();
@@ -270,9 +289,8 @@ export default function CurrencyCalculator() {
           return;
         }
 
-        // Insert new denominations with potential negative values
         const entries = denominations
-          .filter(d => counts[d].total !== 0) // Include both positive and negative totals
+          .filter(d => counts[d].total !== 0)
           .map(d => ({
             calculation_id: calcData.id,
             denomination: d,
@@ -297,7 +315,6 @@ export default function CurrencyCalculator() {
         });
       }
 
-      // Reset form
       setCounts(Object.fromEntries(denominations.map(d => [d, { bundle: '', open: '', total: 0 }])));
       setNote("");
       setEditingEntryId(null);
@@ -375,22 +392,54 @@ export default function CurrencyCalculator() {
     });
   };
 
-  const renderCalculator = () => (
-    <div className="calculator-card">
-      <div className="header">
-        <div className="app-title">Cash Counter</div>
+  const handleSignOut = async () => {
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error signing out:', error.message);
+    }
+  };
+
+  const renderHeader = () => (
+    <div className="header">
+      <div className="app-title">Cash Counter</div>
+      <div className="header-actions">
+        {showHistory ? (
+          <button 
+            className="history-button"
+            onClick={() => {
+              setShowHistory(false);
+              setCounts(Object.fromEntries(denominations.map(d => [d, { bundle: '', open: '', total: 0 }])));
+              setNote("");
+            }}
+          >
+            New
+          </button>
+        ) : (
+          <button 
+            className="history-button"
+            onClick={() => {
+              setShowHistory(true);
+              setEditingEntryId(null);
+              setCounts(Object.fromEntries(denominations.map(d => [d, { bundle: '', open: '', total: 0 }])));
+              setNote("");
+            }}
+          >
+            History
+          </button>
+        )}
         <button 
-          className="history-button"
-          onClick={() => {
-            setShowHistory(true);
-            setEditingEntryId(null);
-            setCounts(Object.fromEntries(denominations.map(d => [d, { bundle: '', open: '', total: 0 }])));
-            setNote("");
-          }}
+          className="sign-out-button"
+          onClick={handleSignOut}
         >
-          History
+          Sign Out
         </button>
       </div>
+    </div>
+  );
+
+  const renderCalculator = () => (
+    <div className="calculator-card">
+      {renderHeader()}
 
       <div className="denominations-container">
         <div className="input-header">
@@ -613,10 +662,16 @@ export default function CurrencyCalculator() {
     );
   };
 
+  if (!session) {
+    return <Auth />;
+  }
+
   return (
     <div className="calculator-container">
       <div className="calculator-wrapper">
-        {showHistory ? renderHistory() : renderCalculator()}
+        <div className="calculator-card">
+          {showHistory ? renderHistory() : renderCalculator()}
+        </div>
       </div>
       <Dialog />
     </div>
