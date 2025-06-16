@@ -80,7 +80,7 @@ export default function CurrencyCalculator({ initialSession }) {
 
   const fetchDates = async () => {
     try {
-      const { data, error } = await supabase
+      const { data, error } = await supabase.schema('currency_calculator_2')
         .from("calculations")
         .select("ist_timestamp")
         .order("created_at", { ascending: false });
@@ -113,7 +113,7 @@ export default function CurrencyCalculator({ initialSession }) {
 
     try {
       const { data, error } = await supabase
-        .from("calculations")
+        .schema('currency_calculator_2').from("calculations")
         .select("id, note, created_at, ist_timestamp")
         .ilike('ist_timestamp', `${selectedDate}%`)
         .order("created_at", { ascending: false });
@@ -141,7 +141,7 @@ export default function CurrencyCalculator({ initialSession }) {
 
     try {
       const { data, error } = await supabase
-        .from("denominations")
+        .schema('currency_calculator_2').from("denominations")
         .select("denomination, count, bundle_count, open_count")
         .eq("calculation_id", id);
       
@@ -227,7 +227,7 @@ export default function CurrencyCalculator({ initialSession }) {
 
       if (editingEntryId) {
         const { error: calcError } = await supabase
-          .from("calculations")
+          .schema('currency_calculator_2').from("calculations")
           .update({ note })
           .eq('id', editingEntryId)
           .eq('user_id', session.user.id);
@@ -238,7 +238,7 @@ export default function CurrencyCalculator({ initialSession }) {
         }
 
         const { error: deleteError } = await supabase
-          .from("denominations")
+          .schema('currency_calculator_2').from("denominations")
           .delete()
           .eq('calculation_id', editingEntryId);
 
@@ -258,7 +258,7 @@ export default function CurrencyCalculator({ initialSession }) {
           }));
 
         const { error: denomError } = await supabase
-          .from("denominations")
+          .schema('currency_calculator_2').from("denominations")
           .insert(entries);
 
         if (denomError) {
@@ -273,7 +273,7 @@ export default function CurrencyCalculator({ initialSession }) {
         });
       } else {
         const { data: calcData, error: calcError } = await supabase
-          .from("calculations")
+          .schema('currency_calculator_2').from("calculations")
           .insert([{ 
             note,
             ist_timestamp: istDateTime,
@@ -298,7 +298,7 @@ export default function CurrencyCalculator({ initialSession }) {
           }));
 
         const { error: denomError } = await supabase
-          .from("denominations")
+          .schema('currency_calculator_2').from("denominations")
           .insert(entries);
 
         if (denomError) {
@@ -353,7 +353,7 @@ export default function CurrencyCalculator({ initialSession }) {
         setLoading(true);
         try {
           const { error: denomError } = await supabase
-            .from("denominations")
+            .schema('currency_calculator_2').from("denominations")
             .delete()
             .eq("calculation_id", entries[entryIndex].id);
 
@@ -363,7 +363,7 @@ export default function CurrencyCalculator({ initialSession }) {
           }
 
           const { error: calcError } = await supabase
-            .from("calculations")
+            .schema('currency_calculator_2').from("calculations")
             .delete()
             .eq("id", entries[entryIndex].id);
 
