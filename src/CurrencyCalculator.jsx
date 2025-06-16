@@ -558,6 +558,20 @@ export default function CurrencyCalculator({ initialSession }) {
           <span className="date-display">
             {dates[dateIndex] || "No Data"}
           </span>
+          <input
+            type="date"
+            value={dates[dateIndex] ? (() => {
+              const [dd, mm, yyyy] = dates[dateIndex].split('/');
+              return `${yyyy}-${mm}-${dd}`;
+            })() : ''}
+            onChange={e => {
+              const [yyyy, mm, dd] = e.target.value.split('-');
+              const picked = `${dd}/${mm}/${yyyy}`;
+              const idx = dates.findIndex(d => d === picked);
+              if (idx !== -1) setDateIndex(idx);
+            }}
+            style={{ marginLeft: 8, marginRight: 8 }}
+          />
           <button
             className="nav-button"
             onClick={() => setDateIndex(Math.max(dateIndex - 1, 0))}
